@@ -152,7 +152,7 @@ def main(args):
     for score, document_text in top_200:
         output_file.write(f'{score},{document_text}\n')
     output_file.close()
-
+    return query
 
 if __name__ == '__main__':
     args = parse_args()

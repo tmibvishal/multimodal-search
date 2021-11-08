@@ -1,5 +1,6 @@
 import argparse
 import os
+import pickle
 import timeit
 from pathlib import Path
 
@@ -81,7 +82,7 @@ def evaluate(image_caption_df, image_name, out_file_path):
     result_string += f'r@100 {rec_at_100}\n'
     result_string += '-------------------------------\n'
 
-    return result_string, AP
+    return result_string, np.array([AP, rec_at_1, rec_at_5, rec_at_10, rec_at_100, nDCG[5], nDCG[10], nDCG[50]], dtype=np.float64)
 
 
 def main(args):
@@ -97,10 +98,17 @@ def main(args):
     images_directory = os.path.join(os.path.dirname(image_caption_txt_path), 'Images')
     output_file = open(args['output_file_path'], "w")
     i = 0
-    MAP = 0
+    results = np.zeros(8, dtype=np.float64)
+    queries_path = os.path.join(temporary_directory, 'queries.pkl')
+    queries = {}
+    # if not os.path.isfile(queries_path):
+    #     if not os.path.exists(temporary_directory):
+    #         os.makedirs(temporary_directory)
+    #     with open(queries_path, 'rb') as handle:
+    #         queries = pickle.load(handle)
     for image_name in df['image'].unique():
+        print(i)
         image_path = os.path.join(images_directory, image_name)
-
         out_file_name = Path(image_path).stem + '.txt'
         output_file_path = os.path.join(output_dir_path, out_file_name)
         # --inp_path data/flickr8k/Images/667626_18933d713e.jpg --collection_saved data/collection_saved.pkl
@@ -108,16 +116,23 @@ def main(args):
         args2 = {'inp_path': image_path, 'collection_saved': collection_saved_path, 'caption_collection_txt': captions_collection_path,
                  'output_file_path': output_file_path, 'score_method': 'bm25'}
         start = timeit.default_timer()
-        search_img(args2)
-        print(f'image: {image_path}')
-        result_string, AP = evaluate(df, image_name, output_file_path)
+        query = search_img(args2)
+        queries[image_path] = query
+        output_file.write(f'image: {image_path}\n')
+        output_file.write(f'query: {query}\n')
+        result_string, cur_result = evaluate(df, image_name, output_file_path)
         output_file.write(result_string + '\n')
-        MAP += AP
-        print('Time: ', timeit.default_timer() - start)
+        results += cur_result
+        output_file.write(f'Time: {timeit.default_timer() - start} sec\n')
         i += 1
-    output_file.write(f'MAP: {MAP/i}\n')
+    # AP, rec_at_1, rec_at_5, rec_at_10, rec_at_100, nDCG[5], nDCG[10], nDCG[50]
+    results /= i
+    output_file.write(f'AP: {results[0]}, rec_at_1: {results[1]}, rec_at_5: {results[2]}, rec_at_10: {results[3]}, rec_at_100: {results[4]}, nDCG[5]: {results[5]}, nDCG[10]: {results[6]}, nDCG[50]: {results[7]}\n')
     output_file.close()
 
+
+    with open(queries_path, 'wb') as handle:
+        pickle.dump(queries, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == '__main__':
     args = parse_args()
