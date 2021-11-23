@@ -11,6 +11,7 @@ import skimage.transform
 import argparse
 from scipy.misc import imread, imresize
 from PIL import Image
+from config import model_path, word_map_path
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -187,21 +188,27 @@ def visualize_att(image_path, seq, alphas, rev_word_map, smooth=True):
     plt.show()
 
 
-def get_caption_decoder_encoder(img_path, model_path, word_map_path, beam_size=5):
-    # Load model
-    warnings.filterwarnings("ignore")
-    checkpoint = torch.load(model_path, map_location=str(device))
-    decoder = checkpoint['decoder']
-    decoder = decoder.to(device)
-    decoder.eval()
-    encoder = checkpoint['encoder']
-    encoder = encoder.to(device)
-    encoder.eval()
+warnings.filterwarnings("ignore")
+checkpoint = torch.load(model_path, map_location=str(device))
+decoder = checkpoint['decoder']
+decoder = decoder.to(device)
+decoder.eval()
+encoder = checkpoint['encoder']
+encoder = encoder.to(device)
+encoder.eval()
 
-    # Load word map (word2ix)
-    with open(word_map_path, 'r') as j:
-        word_map = json.load(j)
-    rev_word_map = {v: k for k, v in word_map.items()}  # ix2word
+# Load word map (word2ix)
+with open(word_map_path, 'r') as j:
+    word_map = json.load(j)
+rev_word_map = {v: k for k, v in word_map.items()}  # ix2word
+
+
+def get_caption_decoder_encoder(img_path, beam_size=5):
+    # Load model
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    
 
     # Encode, decode with attention and beam search
     seq, alphas = caption_image_beam_search(encoder, decoder, img_path, word_map, beam_size)

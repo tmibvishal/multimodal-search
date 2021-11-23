@@ -1,0 +1,28 @@
+#!/bin/sh
+### Set the job name (for your reference)
+#PBS -N GenQueries8K
+### Set the project name, your department code by default
+#PBS -P col764
+### Request email when job begins and ends
+#PBS -m bea
+### Specify email address to use for notification.
+#PBS -M cs5180407@iitd.ac.in
+####
+#PBS -l select=1:ncpus=8:ngpus=2:mem=24G
+### Specify "wallclock time" required for this job, hhh:mm:ss
+#PBS -l walltime=12:00:00
+
+#PBS -l software=python
+# After job starts, must goto working directory. 
+# $PBS_O_WORKDIR is the directory from where the job is fired. 
+echo "==============================="
+echo $PBS_JOBID
+cat $PBS_NODEFILE
+echo "==============================="
+cd $PBS_O_WORKDIR
+
+module load compiler/intel/2020u4/intelpython3.7
+module load apps/pytorch/1.10.0/gpu/intelpython3.7
+module load pythonpackages/3.6.0/tornado/5.1/gnu
+
+python gen_queries.py -i data/flickr8k/image_caption_val.txt -q temporary_directory/queries_val.pkl
