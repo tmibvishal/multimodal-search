@@ -3,6 +3,7 @@
 
 
 import collections
+import timeit
 from heapq import heapify, heappop, heappush
 from typing import List
 
@@ -21,15 +22,15 @@ class Collection:
         self.doc_number = doc_number
         self.length = L
         self.trans_probs = trans_probs
-        self.index = {}
+        self.index = collections.defaultdict(list)
 
     def generate_index(self):
         for document in self.documents:
             for word in document.TF:
-                if word in self.index:
-                    self.index[word].append(document)
-                else:
-                    self.index[word] = [document]
+                self.index[word].append(document)
+
+    def collection_subset(self, documents_subset):
+        return Collection(doc_number=len(documents_subset))
 
 
 class Document:
@@ -50,6 +51,37 @@ class Document:
             self.TFIDF[word] = (1 + np.log2(self.TF[word])) / (np.log2(1 + N / DF[word]))
             self.norm += self.TFIDF[word] ** 2
         self.norm = self.norm ** 0.5
+
+
+def get_collection_subset(documents_subset, trans_probs) -> Collection:
+    documents = []  # doc_number -> Document Object
+    CF = {}  # Collection Frequency. How many times a term appears in the entire collection
+    DF = {}  # Document Frequency. How many documents contains a term
+    doc_number = 0
+    for document in documents_subset:
+        documents.append(document)
+        # print(document)
+        for w in document.TF:
+            CF[w] = CF.get(w, 0) + document.TF[w]
+            DF[w] = DF.get(w, 0) + 1
+        doc_number += 1
+
+    # Finding vocabulary which maps word to an index in [0, total_unique_words)
+    vocabulary = {}
+    index = 0
+    for word in CF:
+        vocabulary[word] = index
+        index += 1
+
+    L = 0
+    for document in documents:
+        document.generate_vsm_params(DF, doc_number)
+        L += document.doc_len
+
+    collection = Collection(CF, DF, vocabulary, documents, doc_number, L, trans_probs)
+    collection.generate_index()
+
+    return collection
 
 
 def make_collection(captions_collection_path: str, trans_probs) -> Collection:
@@ -81,7 +113,10 @@ def make_collection(captions_collection_path: str, trans_probs) -> Collection:
         document.generate_vsm_params(DF, doc_number)
         L += document.doc_len
 
-    return Collection(CF, DF, vocabulary, documents, doc_number, L, trans_probs)
+    collection = Collection(CF, DF, vocabulary, documents, doc_number, L, trans_probs)
+    collection.generate_index()
+
+    return collection
 
 
 def bm2_score(query: str, document: Document, collection: Collection, k: float = 2, b: float = 0.75) -> int:
@@ -178,11 +213,19 @@ def get_top_docs(query, collection: Collection, scoring_function, raw=False):
     priority_queue = []  # Keep top 200 documents
     heapify(priority_queue)
     word_token_1 = splitter(query, raw)
-    for document in collection.documents:
-        if similarity(word_token_1, document) > 0.01:
-            heappush(priority_queue, (scoring_function(query, document, collection), document.text))
-            if len(priority_queue) > max_retrieved_documents:
-                heappop(priority_queue)
+    print(word_token_1)
+    indexed_document = set()
+    for word in word_token_1:
+        for document in collection.index[word]:
+            if similarity(word_token_1, document) > 0.1:
+                indexed_document.add(document)
+    start = timeit.default_timer()
+    collection_subset = get_collection_subset(indexed_document, trans_probs=collection.trans_probs)
+    print(f'collection subset length {len(collection_subset.documents)}')
+    for document in collection_subset.documents:
+        heappush(priority_queue, (scoring_function(query, document, collection), document.text))
+        if len(priority_queue) > max_retrieved_documents:
+            heappop(priority_queue)
     # priority_queue has top 200 elements sorted in reverse order
     top_200 = []
     while len(priority_queue) > 0:

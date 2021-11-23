@@ -1,0 +1,13 @@
+image: 1000268201_693b08cb0e.jpg
+query: a woman standing in front of a wooden building
+query_image = 1000268201_693b08cb0e.jpg
+nDCG[5] = 0.0 and nDCG[10] = 0.09803928583135704 and nDCG[50] = 0.09803928583135704
+Average Precision (MAP) = 0.027075914625377093
+Recall at k:
+r@1 0
+r@5 0
+r@10 1
+r@100 1
+-------------------------------
+
+Time: 0.37960767700133147 sec

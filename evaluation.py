@@ -1,6 +1,7 @@
 import argparse
 import os
 import pickle
+import timeit
 
 import numpy as np
 import pandas as pd
@@ -9,18 +10,21 @@ from config import temporary_directory, max_retrieved_documents
 from search_image import get_top_docs, make_collection, bm2_score, lm_score, vsm_score, lmt_score
 
 
+# -i data/flickr8k/image_caption.txt -c data/collection_saved.pkl -q data/queries_8k.pkl -o output/output_bm25 -f bm25
+
 def parse_args():
     parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
     parser.add_argument('-i', '--image_caption_txt_path', type=str, required=True,
-                        help="Path for the image caption txt file")
+                        help='Path for the image caption txt file')
     parser.add_argument('-c', '--collection_file', type=str, required=True,
-                        help="Path for the pickle file of collection")
+                        help='Path for the pickle file of collection')
     parser.add_argument('-q', '--query_file', type=str, required=True,
-                        help="Path for the pickle file of queries generated")
+                        help='Path for the pickle file of queries generated')
     parser.add_argument('-o', '--output_file_path', type=str, required=True,
-                        help="Output file path")
+                        help='Output file path')
     parser.add_argument('-f', '--scoring_function', type=str, required=True,
-                        help="Scoring Function")
+                        choices=['vsm', 'bm25', 'lm', 'lmt'],
+                        help='Scoring Function vsm/bm25/lm/lmt')
     args_ = vars(parser.parse_args())
     return args_
 
@@ -33,7 +37,7 @@ def save_captions_collections_from_image_captions(image_caption_file_path, capti
 
 
 def evaluate(image_caption_df, image_name, top_k):
-    result_string = ""
+    result_string = ''
 
     # Checking some assertions
     temp = [x[0] for x in top_k]
@@ -70,9 +74,14 @@ def evaluate(image_caption_df, image_name, top_k):
         AP += precision
     AP = AP / 100
 
+    # Fill remaining DCGs
+    for i in range(len(retrieved_documents), max(len(retrieved_documents), 51)):
+        if i > 0:
+            DCG[i] += DCG[i - 1]
+
     # Calculating DCG'
     DCG_prime = np.zeros(max(len(retrieved_documents), 51), dtype=np.float)
-    for i, _ in enumerate(retrieved_documents):
+    for i in range(max(len(retrieved_documents), 51)):
         rel = 1 if i < 5 else 0
         DCG_prime[i] = rel / np.log2(i + 2)
         if i > 0:
@@ -124,9 +133,8 @@ def main(args):
     elif scoring_function_name == 'lmt':
         scoring_function = lmt_score
     else:
-        print("Scoring function hasn't been implemented")
+        print('error: Scoring function hasn\'t been implemented')
         exit(-1)
-        return
 
     raw = (scoring_function_name == 'lmt')
 
@@ -134,17 +142,18 @@ def main(args):
         queries = pickle.load(f)
 
     trans_probs = None
-    with open("data/word2vec/translation_probs.pkl", 'rb') as f:
+    with open('data/word2vec/translation_probs.pkl', 'rb') as f:
         trans_probs = pickle.load(f)
 
     captions_collection_path = os.path.join(temporary_directory, os.path.basename(image_caption_txt_path))
     save_captions_collections_from_image_captions(image_caption_txt_path, captions_collection_path)
     collection, save_collection = create_collection_file(captions_collection_path, args['collection_file'], trans_probs)
 
-    output_file = open(args['output_file_path'], "w")
+    output_file = open(args['output_file_path'], 'w')
     i = 0
     results = np.zeros(8, dtype=np.float64)
     for image_name in df['image'].unique():
+        start = timeit.default_timer()
         image_path = os.path.join(images_directory, image_name)
         query = queries[image_name][0]
 
@@ -154,7 +163,9 @@ def main(args):
         result_string, cur_result = evaluate(df, image_name, top_k)
         output_file.write(result_string + '\n')
         results += cur_result
-        # output_file.write(f'Time: {timeit.default_timer() - start} sec\n')
+        time_taken = timeit.default_timer() - start
+        output_file.write(f'Time: {time_taken} sec\n')
+        print(f'query_number {i}, time_taken {time_taken} sec\n')
         i += 1
     # AP, rec_at_1, rec_at_5, rec_at_10, rec_at_100, nDCG[5], nDCG[10], nDCG[50]
     results /= i
