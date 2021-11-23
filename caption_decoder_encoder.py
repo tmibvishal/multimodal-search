@@ -1,5 +1,6 @@
 import warnings
 
+import cv2
 import torch
 import torch.nn.functional as F
 import numpy as np
@@ -8,8 +9,6 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import skimage.transform
-import argparse
-from scipy.misc import imread, imresize
 from PIL import Image
 from config import model_path, word_map_path
 
@@ -32,11 +31,11 @@ def caption_image_beam_search(encoder, decoder, image_path, word_map, beam_size=
     vocab_size = len(word_map)
 
     # Read image and process
-    img = imread(image_path)
+    img = cv2.imread(image_path)
     if len(img.shape) == 2:
         img = img[:, :, np.newaxis]
         img = np.concatenate([img, img, img], axis=2)
-    img = imresize(img, (256, 256))
+    img = cv2.resize(img, (256, 256))
     img = img.transpose(2, 0, 1)
     img = img / 255.
     img = torch.FloatTensor(img).to(device)
