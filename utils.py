@@ -19,9 +19,15 @@ def stem(string: str):
     return stemmer.stem(s)
 
 
-def splitter(text):
+
+def splitter(text, raw=False):
     word_tokens = re.split(delimiters, text)
+    if raw:
+        return [word.lower() for word in word_tokens if word not in stop_words]
     words_taken = []
+
+    # words_taken = [stem(word.lower()) for word in word_tokens if word not in stop_words]
+
     for word in word_tokens:
         word = word.lower()
         if word not in stop_words:
@@ -30,11 +36,11 @@ def splitter(text):
     return words_taken
 
 
-def tokenize_and_store(texts: str or List[str], dictionary: Dict[str, int], frequency=True):
+def tokenize_and_store(texts: str or List[str], dictionary: Dict[str, int], frequency=True, raw=False):
     if isinstance(texts, str):
         texts = [texts]
     for text in texts:
-        word_tokens = splitter(text)
+        word_tokens = splitter(text, raw)
         for w in word_tokens:
             if frequency:
                 dictionary[w] += 1

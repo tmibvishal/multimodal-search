@@ -46,27 +46,29 @@ def torch_preprocess(orig_image):
     return image
 
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# load the list of categories in the COCO dataset and then generate a
+# set of bounding box colors for each class
+CLASSES = get_coco_object_categories()
+COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
+
+# initialize a dictionary containing model name and its corresponding
+# torchvision function call
+MODELS = {
+    "frcnn-resnet": detection.fasterrcnn_resnet50_fpn,
+    "frcnn-mobilenet": detection.fasterrcnn_mobilenet_v3_large_320_fpn,
+    "retinanet": detection.retinanet_resnet50_fpn
+}
+
+# load the model and set it to evaluation mode
+model = MODELS['frcnn-resnet'](pretrained=True, progress=True,
+                                   num_classes=len(CLASSES), pretrained_backbone=True).to(DEVICE)
+model.eval()
+
 def get_captions_object_detection(img_path):
     # set the device we will be using to run the model
-    DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # load the list of categories in the COCO dataset and then generate a
-    # set of bounding box colors for each class
-    CLASSES = get_coco_object_categories()
-    COLORS = np.random.uniform(0, 255, size=(len(CLASSES), 3))
-
-    # initialize a dictionary containing model name and its corresponding
-    # torchvision function call
-    MODELS = {
-        "frcnn-resnet": detection.fasterrcnn_resnet50_fpn,
-        "frcnn-mobilenet": detection.fasterrcnn_mobilenet_v3_large_320_fpn,
-        "retinanet": detection.retinanet_resnet50_fpn
-    }
-
-    # load the model and set it to evaluation mode
-    model = MODELS['frcnn-resnet'](pretrained=True, progress=True,
-                                       num_classes=len(CLASSES), pretrained_backbone=True).to(DEVICE)
-    model.eval()
+    
 
     words = []
 

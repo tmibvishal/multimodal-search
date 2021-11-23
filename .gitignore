@@ -4,3 +4,6 @@ model_checkpoints
 data/flickr8k/Images
 data/flickr8k.zip
 temporary_directory
+data/word2vec/GoogleNews-vectors-negative300.bin
+data/word2vec/GoogleNews-vectors-negative300.bin.gz
+data/rts

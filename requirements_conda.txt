@@ -1,0 +1,9 @@
+numpy
+opencv
+pandas
+Pillow
+scikit-image
+scipy==1.2.0
+pytorch
+torchvision
+nltk
