@@ -217,7 +217,7 @@ def get_top_docs(query, collection: Collection, scoring_function, raw=False):
     indexed_document = set()
     for word in word_token_1:
         for document in collection.index[word]:
-            if similarity(word_token_1, document) > 0.1:
+            if similarity(word_token_1, document) > 0.15:
                 indexed_document.add(document)
     start = timeit.default_timer()
     collection_subset = get_collection_subset(indexed_document, trans_probs=collection.trans_probs)
