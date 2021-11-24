@@ -166,6 +166,10 @@ def main(args):
         time_taken = timeit.default_timer() - start
         output_file.write(f'Time: {time_taken} sec\n')
         print(f'query_number {i}, time_taken {time_taken} sec\n')
+
+        if i == 1000:
+            break
+
         i += 1
     # AP, rec_at_1, rec_at_5, rec_at_10, rec_at_100, nDCG[5], nDCG[10], nDCG[50]
     results /= i
