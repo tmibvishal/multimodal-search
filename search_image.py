@@ -9,7 +9,7 @@ from typing import List
 
 import numpy as np
 
-from config import max_retrieved_documents
+from config import max_retrieved_documents, do_indexing
 from utils import tokenize_and_store, splitter
 
 
@@ -190,11 +190,13 @@ def lmt_score(query: str, document: Document, collection: Collection, raw=False)
         return (tfi + mu * cfi / collection.length) / (document.doc_len + mu)
 
     score = 0
+    # raw means we are doing stop words removal but no stemming
     for query_term in splitter(query, raw):
         if query_term in tprobs:
             temp = 0
             for tqterm in tprobs[query_term]:
                 temp += dirichlet_score(tqterm) * tprobs[query_term][tqterm]
+            # score = P(query_term|document) = Sum_tqterm (P(tqterm|document) * P(query_term|tqterm))
             score += np.log(temp)
         # else:
         #     score += dirichlet_score(query_term)
@@ -214,13 +216,14 @@ def get_top_docs(query, collection: Collection, scoring_function, raw=False):
     heapify(priority_queue)
     word_token_1 = splitter(query, raw)
     print(word_token_1)
+
     indexed_document = set()
     for word in word_token_1:
         for document in collection.index[word]:
             if similarity(word_token_1, document) > 0.15:
                 indexed_document.add(document)
-    start = timeit.default_timer()
     collection_subset = get_collection_subset(indexed_document, trans_probs=collection.trans_probs)
+
     print(f'collection subset length {len(collection_subset.documents)}')
     for document in collection_subset.documents:
         heappush(priority_queue, (scoring_function(query, document, collection), document.text))

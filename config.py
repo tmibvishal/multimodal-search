@@ -13,3 +13,5 @@ max_retrieved_documents = 200
 
 model_path='model_checkpoints/BEST_checkpoint_coco_5_cap_per_img_5_min_word_freq.pth.tar'
 word_map_path='model_checkpoints/WORDMAP_coco_5_cap_per_img_5_min_word_freq.json'
+
+do_indexing = True

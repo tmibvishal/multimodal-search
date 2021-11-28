@@ -13,7 +13,7 @@ from search_image import get_top_docs, make_collection, bm2_score, lm_score, vsm
 # -i data/flickr8k/image_caption.txt -c data/collection_saved.pkl -q data/queries_8k.pkl -o output/output_bm25 -f bm25
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
+    parser = argparse.ArgumentParser(description='Get evaluation for model')
     parser.add_argument('-i', '--image_caption_txt_path', type=str, required=True,
                         help='Path for the image caption txt file')
     parser.add_argument('-c', '--collection_file', type=str, required=True,
@@ -36,7 +36,7 @@ def save_captions_collections_from_image_captions(image_caption_file_path, capti
     df.to_csv(captions_collection_path, header=False, index=False)
 
 
-def evaluate(image_caption_df, image_name, top_k):
+def evaluate(image_caption_df, image_name, top_k, output_file=None):
     result_string = ''
 
     # Checking some assertions
@@ -48,9 +48,17 @@ def evaluate(image_caption_df, image_name, top_k):
 
     relevant_documents_list = list(image_caption_df.query(f'image == "{image_name}"')['caption'])
     relevant_documents = set(relevant_documents_list)
+
     # print(relevant_documents)
     # print(retrieved_documents)
+
+    if output_file is not None:
+        output_file.write(f'relevant_documents: {relevant_documents}\n')
+        output_file.write(f'retrieved_documents: {retrieved_documents}\n')
+
     print(f'relevant query 1: {relevant_documents_list[0]}')
+    print(retrieved_documents)
+
     DCG = np.zeros(max(51, len(retrieved_documents)), dtype=np.float)
     AP = 0
     precision_numerator = 0
@@ -87,6 +95,12 @@ def evaluate(image_caption_df, image_name, top_k):
         if i > 0:
             DCG_prime[i] += DCG_prime[i - 1]
     nDCG = DCG / DCG_prime
+
+    rec_at_1 /= 5
+    rec_at_5 /= 5
+    rec_at_10 /= 5
+    rec_at_100 /= 5
+
     result_string += f'query_image = {image_name}\n'
     result_string += f'nDCG[5] = {nDCG[5]} and nDCG[10] = {nDCG[10]} and nDCG[50] = {nDCG[50]}\n'
     result_string += f'Average Precision (MAP) = {AP}\n'
@@ -152,7 +166,10 @@ def main(args):
     output_file = open(args['output_file_path'], 'w')
     i = 0
     results = np.zeros(8, dtype=np.float64)
+
+    avg_time_taken = 0
     for image_name in df['image'].unique():
+
         start = timeit.default_timer()
         image_path = os.path.join(images_directory, image_name)
         query = queries[image_name][0]
@@ -160,22 +177,26 @@ def main(args):
         top_k = get_top_docs(query, collection, scoring_function, raw)
         output_file.write(f'image: {image_name}\n')
         output_file.write(f'query: {query}\n')
-        result_string, cur_result = evaluate(df, image_name, top_k)
+        result_string, cur_result = evaluate(df, image_name, top_k, output_file=output_file)
         output_file.write(result_string + '\n')
         results += cur_result
         time_taken = timeit.default_timer() - start
         output_file.write(f'Time: {time_taken} sec\n')
+        avg_time_taken += time_taken
         print(f'query_number {i}, time_taken {time_taken} sec\n')
 
-        if i == 1000:
-            break
-
         i += 1
+
+        # if i == 1000:
+        #     break
+
     # AP, rec_at_1, rec_at_5, rec_at_10, rec_at_100, nDCG[5], nDCG[10], nDCG[50]
+    avg_time_taken /= i
     results /= i
     output_file.write(
         f'AP: {results[0]}, rec_at_1: {results[1]}, rec_at_5: {results[2]}, rec_at_10: {results[3]}, rec_at_100: {results[4]}, ' +
         f'nDCG[5]: {results[5]}, nDCG[10]: {results[6]}, nDCG[50]: {results[7]}\n')
+    output_file.write(f'avg_time_taken_per_query: {avg_time_taken}')
     output_file.close()
 
     if save_collection:

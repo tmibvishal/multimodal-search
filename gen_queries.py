@@ -2,18 +2,15 @@ import argparse
 import os
 import pickle
 import time
-from pathlib import Path
-
-import numpy as np
 import pandas as pd
 
 from caption_decoder_encoder import get_caption_decoder_encoder
 from caption_object_detection import get_captions_object_detection
-from config import temporary_directory, max_retrieved_documents, model_path, word_map_path
+from config import temporary_directory
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Get mIOU of video sequences')
+    parser = argparse.ArgumentParser(description='Generate queries pickle file. Then you don\'t need to generate text query from image at query time')
     parser.add_argument('-i', '--image_caption_txt_path', type=str, required=True,
                         help="Path for the image caption txt file")
     parser.add_argument('-q', '--query_file', type=str, required=True,
@@ -29,13 +26,12 @@ def save_captions_collections_from_image_captions(image_caption_file_path, capti
     df.to_csv(captions_collection_path, header=False, index=False)
 
 
-
 def gen_query(image_path):
     start = time.time()
     words = get_caption_decoder_encoder(img_path=image_path)
     words2 = get_captions_object_detection(img_path=image_path)
     end = time.time()
-    print("Time taken to generate queries", end-start)
+    print("Time taken to generate queries", end - start)
 
     if len(words) >= 2:
         lstmquery = ' '.join(words[1:-1])  # removing <start> and <end> from words
@@ -45,6 +41,7 @@ def gen_query(image_path):
     print(f'query generated: {lstmquery}')
     print(f'query generated: {odquery}')
     return lstmquery, odquery
+
 
 def main(args):
     image_caption_txt_path = args['image_caption_txt_path']
@@ -64,6 +61,7 @@ def main(args):
         queries[image_name] = gen_query(image_path)
     with open(queries_path, 'wb') as handle:
         pickle.dump(queries, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 if __name__ == '__main__':
     args = parse_args()

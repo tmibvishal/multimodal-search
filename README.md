@@ -15,9 +15,14 @@ Download and paste 2 files in a directory `model_checkpoints`
 Now, download flickr8k.zip dataset. Extract the files in data folder and overwrite the existing files
 I have removed data/flickr8k/Images but kept other files. Make sure those Images are in that folder
 
+Pre generate all text queries for all images. Makes evaluation easy
+```
+python gen_queries.py -i data/flickr8k/image_caption.txt -q data/queries_8k.pkl
+```
+
 Now run evaluation
 image_caption_val.txt contains only 117 documents
 ```
-python evaluation.py -i data/flickr8k/image_caption_val.txt -o temporary_directory/evaluation.txt
+python evaluation.py -i data/flickr8k/image_caption.txt -c data/collection_saved.pkl -q data/queries_8k.pkl -o output/output_bm25 -f bm25
 ```
 Evaluation will be saved in temporary_directory/evaluation.txt
